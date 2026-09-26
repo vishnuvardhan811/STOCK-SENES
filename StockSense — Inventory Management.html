@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>StockSense — Inventory Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#12161D; --panel:#1A2029; --panel2:#212836; --border:#2B3341;
+  --text:#E8EBF1; --muted:#8C97AA; --muted2:#5E6A7E;
+  --amber:#E3A857; --amber-dim:#3A2F1E;
+  --green:#4FAE7E; --green-dim:#1B2B22;
+  --red:#E1665D; --red-dim:#2E1C1C;
+  --blue:#5E9BD6;
+  --radius:6px;
+  --mono:'IBM Plex Mono', monospace;
+  padding-top: env(safe-area-inset-top,0px);
+  padding-bottom: env(safe-area-inset-bottom,0px);
+  box-sizing:border-box;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'Inter',system-ui,sans-serif; font-size:14px; line-height:1.5;
+}
+body{background:var(--bg);}
+a{color:inherit;}
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+.app{display:flex; min-height:100vh;}
+
+/* Sidebar */
+.sidebar{
+  width:220px; flex-shrink:0; background:var(--panel); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; padding:18px 0;
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.brand{padding:0 20px 18px; border-bottom:1px solid var(--border); margin-bottom:10px;}
+.brand-mark{font-weight:700; font-size:17px; letter-spacing:-0.02em;}
+.brand-mark span{color:var(--amber);}
+.brand-sub{font-size:11px; color:var(--muted2); margin-top:2px;}
+.nav-group{padding:14px 12px 2px;}
+.nav-label{font-size:11px; color:var(--muted2); padding:0 8px 6px; font-weight:600;}
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--radius);
+  color:var(--muted); cursor:pointer; font-size:13.5px; font-weight:500; margin-bottom:1px;
+  border-left:2px solid transparent;
+}
+.nav-item:hover{background:var(--panel2); color:var(--text);}
+.nav-item.active{background:var(--panel2); color:var(--text); border-left:2px solid var(--amber);}
+.nav-icon{width:16px; text-align:center; flex-shrink:0; font-size:14px;}
+.sidebar-foot{margin-top:auto; padding:12px; border-top:1px solid var(--border);}
+.profile-row{display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:var(--radius); cursor:pointer;}
+.profile-row:hover{background:var(--panel2);}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--amber-dim);color:var(--amber);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.profile-name{font-size:13px; font-weight:600;}
+.profile-role{font-size:11px; color:var(--muted2);}
+
+/* Main */
+.main{flex:1; min-width:0; display:flex; flex-direction:column;}
+.topbar{
+  padding:16px 28px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; background:rgba(18,22,29,0.92); backdrop-filter:blur(6px); z-index:5;
+}
+.page-title{font-size:19px; font-weight:700; letter-spacing:-0.01em;}
+.page-sub{font-size:12.5px; color:var(--muted); margin-top:2px;}
+.search-wrap{position:relative;}
+.search-input{
+  background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:var(--radius);
+  padding:8px 12px 8px 30px; font-size:13px; width:220px; font-family:inherit;
+}
+.search-input:focus{outline:1px solid var(--amber); border-color:var(--amber);}
+.search-icon{position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--muted2); font-size:12px;}
+
+.content{padding:24px 28px 60px; overflow-x:hidden;}
+
+/* KPI cards */
+.kpi-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:22px;}
+@media (max-width:1100px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+.kpi{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px;}
+.kpi-label{font-size:11.5px; color:var(--muted); margin-bottom:8px;}
+.kpi-value{font-size:26px; font-weight:700; font-family:var(--mono); letter-spacing:-0.02em;}
+.kpi-value.warn{color:var(--amber);}
+.kpi-value.bad{color:var(--red);}
+
+/* Filters */
+.filter-bar{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; align-items:center;}
+.chip{
+  padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:var(--panel);
+  font-size:12.5px; color:var(--muted); cursor:pointer; font-weight:500;
+}
+.chip:hover{color:var(--text); border-color:var(--muted2);}
+.chip.active{background:var(--amber-dim); border-color:var(--amber); color:var(--amber);}
+select.filter-select{
+  background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:var(--radius);
+  padding:7px 10px; font-size:12.5px; font-family:inherit;
+}
+
+/* Table */
+.panel{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden;}
+.panel-head{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border);}
+.panel-title{font-size:14px; font-weight:600;}
+table{width:100%; border-collapse:collapse; font-size:13px;}
+thead th{
+  text-align:left; padding:10px 16px; color:var(--muted); font-weight:600; font-size:11.5px;
+  border-bottom:1px solid var(--border); white-space:nowrap;
+}
+tbody td{padding:11px 16px; border-bottom:1px solid var(--border); vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--panel2);}
+.mono{font-family:var(--mono); font-size:12.5px; color:var(--muted);}
+.qty-pos{color:var(--green); font-family:var(--mono);}
+.qty-neg{color:var(--red); font-family:var(--mono);}
+.table-scroll{overflow-x:auto;}
+
+.badge{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;}
+.badge-draft{background:#2A3141; color:var(--muted);}
+.badge-waiting{background:var(--amber-dim); color:var(--amber);}
+.badge-ready{background:#1E2C3D; color:var(--blue);}
+.badge-done{background:var(--green-dim); color:var(--green);}
+.badge-canceled{background:var(--red-dim); color:var(--red);}
+
+.btn{
+  background:var(--amber); color:#1a1305; border:none; padding:9px 16px; border-radius:var(--radius);
+  font-weight:600; font-size:13px; cursor:pointer; font-family:inherit;
+}
+.btn:hover{filter:brightness(1.08);}
+.btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text);}
+.btn-ghost:hover{border-color:var(--muted2);}
+.btn-sm{padding:5px 10px; font-size:12px;}
+.btn-row{display:flex; gap:8px;}
+
+.empty{padding:50px 20px; text-align:center; color:var(--muted);}
+.empty-title{font-weight:600; color:var(--text); margin-bottom:4px;}
+
+/* Modal */
+.overlay{
+  position:fixed; inset:0; background:rgba(8,10,14,0.6); display:none; align-items:flex-start;
+  justify-content:center; z-index:50; padding:40px 20px; overflow-y:auto;
+}
+.overlay.open{display:flex;}
+.modal{background:var(--panel); border:1px solid var(--border); border-radius:8px; width:100%; max-width:480px;}
+.modal-head{padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;}
+.modal-title{font-weight:700; font-size:15px;}
+.modal-close{cursor:pointer; color:var(--muted); font-size:18px; line-height:1;}
+.modal-body{padding:18px 20px; display:flex; flex-direction:column; gap:12px;}
+.field label{display:block; font-size:12px; color:var(--muted); margin-bottom:5px; font-weight:500;}
+.field input, .field select{
+  width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+  padding:9px 10px; border-radius:var(--radius); font-size:13.5px; font-family:inherit;
+}
+.field input:focus, .field select:focus{outline:none; border-color:var(--amber);}
+.field-row{display:flex; gap:10px;}
+.field-row .field{flex:1;}
+.modal-foot{padding:14px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px;}
+.hint{font-size:11.5px; color:var(--muted2); margin-top:-4px;}
+
+.toast-wrap{position:fixed; bottom:20px; right:20px; z-index:60; display:flex; flex-direction:column; gap:8px;}
+.toast{background:var(--panel2); border:1px solid var(--border); border-left:3px solid var(--green); padding:11px 16px; border-radius:var(--radius); font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,0.3); animation:toastIn .2s ease;}
+@keyframes toastIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+.section-hidden{display:none;}
+.link-btn{background:none;border:none;color:var(--amber);cursor:pointer;font-size:12.5px;font-weight:600;padding:0;font-family:inherit;}
+
+@media (max-width:820px){
+  .sidebar{position:fixed; left:-220px; z-index:40; transition:left .2s; box-shadow:0 0 0 9999px rgba(0,0,0,0); height:100dvh;}
+  .sidebar.open{left:0; box-shadow:0 0 40px rgba(0,0,0,0.5);}
+  .menu-toggle{display:inline-flex !important;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .search-input{width:140px;}
+  .topbar{padding:14px 16px;}
+  .content{padding:18px 14px 50px;}
+}
+.menu-toggle{display:none; align-items:center; justify-content:center; width:32px; height:32px; background:var(--panel2); border:1px solid var(--border); border-radius:6px; color:var(--text); cursor:pointer; font-size:15px; margin-right:10px;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark">Stock<span>Sense</span></div>
+      <div class="brand-sub">Inventory Management</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">OVERVIEW</div>
+      <div class="nav-item active" data-page="dashboard"><span class="nav-icon">◱</span> Dashboard</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">CATALOG</div>
+      <div class="nav-item" data-page="products"><span class="nav-icon">▤</span> Products</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">OPERATIONS</div>
+      <div class="nav-item" data-page="receipts"><span class="nav-icon">↓</span> Receipts</div>
+      <div class="nav-item" data-page="deliveries"><span class="nav-icon">↑</span> Delivery Orders</div>
+      <div class="nav-item" data-page="transfers"><span class="nav-icon">⇄</span> Internal Transfers</div>
+      <div class="nav-item" data-page="adjustments"><span class="nav-icon">≈</span> Adjustments</div>
+      <div class="nav-item" data-page="ledger"><span class="nav-icon">☰</span> Move History</div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">SYSTEM</div>
+      <div class="nav-item" data-page="settings"><span class="nav-icon">⚙</span> Settings</div>
+    </div>
+    <div class="sidebar-foot">
+      <div class="profile-row">
+        <div class="avatar">RM</div>
+        <div>
+          <div class="profile-name">Riya Mehta</div>
+          <div class="profile-role">Inventory Manager</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex; align-items:center;">
+        <div class="menu-toggle" id="menuToggle">☰</div>
+        <div>
+          <div class="page-title" id="pageTitle">Dashboard</div>
+          <div class="page-sub" id="pageSub">Snapshot of all inventory operations</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input class="search-input" id="globalSearch" placeholder="Search SKU or product…">
+        </div>
+        <button class="btn" id="primaryAction">+ New Receipt</button>
+      </div>
+    </div>
+
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ---------- State ---------- */
+const KEY = 'stocksense_v1';
+const WAREHOUSES = ['Main Warehouse','Production Floor','Warehouse 2'];
+const CATEGORIES = ['Raw Materials','Components','Finished Goods','Packaging'];
+
+function seed(){
+  return {
+    products:[
+      {id:'p1', name:'Steel Rods', sku:'STL-ROD-001', category:'Raw Materials', uom:'kg', reorder:50,
+        stock:{'Main Warehouse':180,'Production Floor':20,'Warehouse 2':0}},
+      {id:'p2', name:'Wooden Chairs', sku:'CHR-WD-014', category:'Finished Goods', uom:'unit', reorder:15,
+        stock:{'Main Warehouse':34,'Production Floor':0,'Warehouse 2':6}},
+      {id:'p3', name:'Cardboard Boxes (M)', sku:'PKG-BOX-M02', category:'Packaging', uom:'unit', reorder:100,
+        stock:{'Main Warehouse':12,'Production Floor':0,'Warehouse 2':0}},
+      {id:'p4', name:'Bearing Set', sku:'CMP-BRG-220', category:'Components', uom:'unit', reorder:30,
+        stock:{'Main Warehouse':64,'Production Floor':8,'Warehouse 2':0}},
+    ],
+    receipts:[
+      {id:'RC0001', supplier:'Ferro Traders Ltd', warehouse:'Main Warehouse', status:'Done', date:'2026-09-18',
+        lines:[{productId:'p1', qty:100}]},
+      {id:'RC0002', supplier:'Ace Components Co', warehouse:'Main Warehouse', status:'Waiting', date:'2026-09-24',
+        lines:[{productId:'p4', qty:40}]},
+    ],
+    deliveries:[
+      {id:'DL0001', customer:'Bluepine Interiors', warehouse:'Main Warehouse', status:'Done', date:'2026-09-20',
+        lines:[{productId:'p2', qty:10}]},
+      {id:'DL0002', customer:'Northline Retail', warehouse:'Main Warehouse', status:'Ready', date:'2026-09-25',
+        lines:[{productId:'p3', qty:20}]},
+    ],
+    transfers:[
+      {id:'TR0001', from:'Main Warehouse', to:'Production Floor', status:'Done', date:'2026-09-19',
+        lines:[{productId:'p1', qty:20}]},
+    ],
+    adjustments:[
+      {id:'AJ0001', warehouse:'Main Warehouse', reason:'Damaged in storage', status:'Done', date:'2026-09-22',
+        lines:[{productId:'p1', qty:-3}]},
+    ],
+    ledger:[
+      {date:'2026-09-18', ref:'RC0001', type:'Receipt', product:'Steel Rods', from:'Vendor', to:'Main Warehouse', qty:100},
+      {date:'2026-09-19', ref:'TR0001', type:'Internal', product:'Steel Rods', from:'Main Warehouse', to:'Production Floor', qty:20},
+      {date:'2026-09-20', ref:'DL0001', type:'Delivery', product:'Wooden Chairs', from:'Main Warehouse', to:'Customer', qty:-10},
+      {date:'2026-09-22', ref:'AJ0001', type:'Adjustment', product:'Steel Rods', from:'Main Warehouse', to:'—', qty:-3},
+    ],
+    counters:{RC:3, DL:3, TR:2, AJ:2},
+  };
+}
+
+let state = seed();
+try{
+  const saved = localStorage.getItem(KEY);
+  if(saved) state = JSON.parse(saved);
+}catch(e){ console.warn('storage read failed', e); }
+
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ console.warn('storage write failed', e); }
+}
+
+function toast(msg){
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className='toast'; el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.remove(), 3200);
+}
+
+function totalStock(p){ return Object.values(p.stock).reduce((a,b)=>a+b,0); }
+function productById(id){ return state.products.find(p=>p.id===id); }
+function nextId(prefix){ const n = state.counters[prefix]++; return prefix + String(n).padStart(4,'0'); }
+
+function addLedger(type, ref, productId, from, to, qty, date){
+  state.ledger.unshift({date: date||todayStr(), ref, type, product: productById(productId).name, from, to, qty});
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+/* ---------- Nav / routing ---------- */
+let currentPage = 'dashboard';
+let activeStatusFilter = 'all';
+let activeWarehouseFilter = 'all';
+
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+    item.classList.add('active');
+    currentPage = item.dataset.page;
+    activeStatusFilter='all'; activeWarehouseFilter='all';
+    document.getElementById('sidebar').classList.remove('open');
+    render();
+  });
+});
+document.getElementById('menuToggle').addEventListener('click', ()=>{
+  document.getElementById('sidebar').classList.toggle('open');
+});
+
+const TITLES = {
+  dashboard:['Dashboard','Snapshot of all inventory operations'],
+  products:['Products','Manage catalog, categories and reorder rules'],
+  receipts:['Receipts','Incoming stock from suppliers'],
+  deliveries:['Delivery Orders','Outgoing stock to customers'],
+  transfers:['Internal Transfers','Move stock between warehouses and locations'],
+  adjustments:['Stock Adjustments','Reconcile recorded stock with physical counts'],
+  ledger:['Move History','Full ledger of every stock movement'],
+  settings:['Settings','Warehouses and system configuration'],
+};
+const PRIMARY = {
+  dashboard:'+ New Receipt', products:'+ New Product', receipts:'+ New Receipt',
+  deliveries:'+ New Delivery', transfers:'+ New Transfer', adjustments:'+ New Adjustment',
+  ledger:null, settings:'+ New Warehouse',
+};
+
+document.getElementById('primaryAction').addEventListener('click', ()=>{
+  const map = {dashboard:'receipt', receipts:'receipt', deliveries:'delivery', transfers:'transfer',
+    adjustments:'adjustment', products:'product', settings:'warehouse'};
+  openModal(map[currentPage] || 'receipt');
+});
+
+document.getElementById('globalSearch').addEventListener('input', (e)=>{
+  if(currentPage!=='products'){ currentPage='products'; document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active')); document.querySelector('[data-page="products"]').classList.add('active'); }
+  render(e.target.value.toLowerCase());
+});
+
+/* ---------- Rendering ---------- */
+function render(searchTerm){
+  const [title, sub] = TITLES[currentPage];
+  document.getElementById('pageTitle').textContent = title;
+  document.getElementById('pageSub').textContent = sub;
+  const btn = document.getElementById('primaryAction');
+  if(PRIMARY[currentPage]){ btn.style.display='inline-block'; btn.textContent = PRIMARY[currentPage]; }
+  else btn.style.display='none';
+
+  const c = document.getElementById('content');
+  if(currentPage==='dashboard') c.innerHTML = renderDashboard();
+  else if(currentPage==='products') c.innerHTML = renderProducts(searchTerm);
+  else if(currentPage==='receipts') c.innerHTML = renderDocs('receipts','Receipt','supplier','Supplier');
+  else if(currentPage==='deliveries') c.innerHTML = renderDocs('deliveries','Delivery','customer','Customer');
+  else if(currentPage==='transfers') c.innerHTML = renderTransfers();
+  else if(currentPage==='adjustments') c.innerHTML = renderAdjustments();
+  else if(currentPage==='ledger') c.innerHTML = renderLedger();
+  else if(currentPage==='settings') c.innerHTML = renderSettings();
+  bindDynamic();
+}
+
+function kpiBlock(){
+  const totalProducts = state.products.length;
+  const lowStock = state.products.filter(p=>totalStock(p)>0 && totalStock(p)<=p.reorder).length;
+  const outOfStock = state.products.filter(p=>totalStock(p)===0).length;
+  const pendingReceipts = state.receipts.filter(r=>r.status!=='Done'&&r.status!=='Canceled').length;
+  const pendingDeliveries = state.deliveries.filter(d=>d.status!=='Done'&&d.status!=='Canceled').length;
+  return `
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total Products</div><div class="kpi-value">${totalProducts}</div></div>
+    <div class="kpi"><div class="kpi-label">Low Stock</div><div class="kpi-value warn">${lowStock}</div></div>
+    <div class="kpi"><div class="kpi-label">Out of Stock</div><div class="kpi-value bad">${outOfStock}</div></div>
+    <div class="kpi"><div class="kpi-label">Pending Receipts</div><div class="kpi-value">${pendingReceipts}</div></div>
+    <div class="kpi"><div class="kpi-label">Pending Deliveries</div><div class="kpi-value">${pendingDeliveries}</div></div>
+  </div>`;
+}
+
+function badge(status){ return `<span class="badge badge-${status.toLowerCase()}">${status}</span>`; }
+
+function renderDashboard(){
+  const recent = [
+    ...state.receipts.map(r=>({...r, kind:'Receipt', party:r.supplier})),
+    ...state.deliveries.map(d=>({...d, kind:'Delivery', party:d.customer})),
+    ...state.transfers.map(t=>({...t, kind:'Internal', party:t.from+' → '+t.to})),
+    ...state.adjustments.map(a=>({...a, kind:'Adjustment', party:a.reason})),
+  ].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+
+  const lowStockRows = state.products.filter(p=>totalStock(p)<=p.reorder);
+
+  return `
+  ${kpiBlock()}
+  <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:16px;">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Recent Documents</div></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Reference</th><th>Type</th><th>Party</th><th>Warehouse</th><th>Date</th><th>Status</th></tr></thead>
+        <tbody>
+          ${recent.length ? recent.map(r=>`
+            <tr><td class="mono">${r.id}</td><td>${r.kind}</td><td>${r.party}</td><td>${r.warehouse||'—'}</td><td class="mono">${r.date}</td><td>${badge(r.status)}</td></tr>
+          `).join('') : `<tr><td colspan="6"><div class="empty">No documents yet.</div></td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Reorder Alerts</div></div>
+      <div class="table-scroll"><table>
+        <thead><tr><th>Product</th><th>Stock</th><th>Reorder At</th></tr></thead>
+        <tbody>
+          ${lowStockRows.length ? lowStockRows.map(p=>`
+            <tr><td>${p.name}<div class="mono" style="font-size:11px;">${p.sku}</div></td>
+            <td class="${totalStock(p)===0?'qty-neg':'qty-pos'}">${totalStock(p)} ${p.uom}</td>
+            <td class="mono">${p.reorder}</td></tr>
+          `).join('') : `<tr><td colspan="3"><div class="empty">All products above reorder level.</div></td></tr>`}
+        </tbody>
+      </table></div>
+    </div>
+  </div>`;
+}
+
+function renderProducts(term){
+  let rows = state.products;
+  if(term) rows = rows.filter(p=>p.name.toLowerCase().includes(term)||p.sku.toLowerCase().includes(term));
+  return `
+  <div class="filter-bar">
+    ${['all',...CATEGORIES].map(cat=>`<div class="chip ${activeWarehouseFilter===cat?'active':''}" data-cat-filter="${cat}">${cat==='all'?'All categories':cat}</div>`).join('')}
+  </div>
+  <div class="panel">
+    <div class="table-scroll"><table>
+      <thead><tr><th>Product</th><th>SKU</th><th>Category</th><th>UoM</th><th>Total Stock</th><th>Reorder At</th><th>By Location</th></tr></thead>
+      <tbody>
+        ${rows.filter(p=>activeWarehouseFilter==='all'||p.category===activeWarehouseFilter).map(p=>{
+          const ts = totalStock(p);
+          const cls = ts===0?'qty-neg':(ts<=p.reorder?'':'qty-pos');
+          return `<tr>
+            <td><strong>${p.name}</strong></td>
+            <td class="mono">${p.sku}</td>
+            <td>${p.category}</td>
+            <td>${p.uom}</td>
+            <td class="${cls}" style="${ts<=p.reorder&&ts>0?'color:var(--amber)':''}">${ts}</td>
+            <td class="mono">${p.reorder}</td>
+            <td class="mono" style="font-size:11.5px;">${WAREHOUSES.map(w=>`${w.split(' ')[0]}: ${p.stock[w]||0}`).join(' · ')}</td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="7"><div class="empty"><div class="empty-title">No products found</div>Try a different search or add a new product.</div></td></tr>`}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+function renderDocs(key, singular, partyField, partyLabel){
+  const items = state[key];
+  const statuses = ['all','Draft','Waiting','Ready','Done','Canceled'];
+  const filtered = items.filter(d=>(activeStatusFilter==='all'||d.status===activeStatusFilter) && (activeWarehouseFilter==='all'||d.warehouse===activeWarehouseFilter));
+  return `
+  <div class="filter-bar">
+    ${statuses.map(s=>`<div class="chip ${activeStatusFilter===s?'active':''}" data-status-filter="${s}">${s==='all'?'All statuses':s}</div>`).join('')}
+    <select class="filter-select" id="whFilter">
+      <option value="all">All warehouses</option>
+      ${WAREHOUSES.map(w=>`<option value="${w}" ${activeWarehouseFilter===w?'selected':''}>${w}</option>`).join('')}
+    </select>
+  </div>
+  <div class="panel">
+    <div class="table-scroll"><table>
+      <thead><tr><th>Reference</th><th>${partyLabel}</th><th>Warehouse</th><th>Lines</th><th>Date</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        ${filtered.length ? filtered.map(d=>`
+          <tr>
+            <td class="mono">${d.id}</td>
+            <td>${d[partyField]}</td>
+            <td>${d.warehouse}</td>
+            <td>${d.lines.map(l=>`${productById(l.productId).name} (${l.qty})`).join(', ')}</td>
+            <td class="mono">${d.date}</td>
+            <td>${badge(d.status)}</td>
+            <td>${d.status!=='Done'&&d.status!=='Canceled' ? `<button class="link-btn" data-validate="${key}:${d.id}">Validate →</button>` : ''}</td>
+          </tr>
+        `).join('') : `<tr><td colspan="7"><div class="empty"><div class="empty-title">No ${singular.toLowerCase()}s found</div>Nothing matches these filters yet.</div></td></tr>`}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+function renderTransfers(){
+  const items = state.transfers;
+  return `
+  <div class="panel">
+    <div class="table-scroll"><table>
+      <thead><tr><th>Reference</th><th>From</th><th>To</th><th>Lines</th><th>Date</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        ${items.map(t=>`
+          <tr>
+            <td class="mono">${t.id}</td><td>${t.from}</td><td>${t.to}</td>
+            <td>${t.lines.map(l=>`${productById(l.productId).name} (${l.qty})`).join(', ')}</td>
+            <td class="mono">${t.date}</td><td>${badge(t.status)}</td>
+            <td>${t.status!=='Done' ? `<button class="link-btn" data-validate="transfers:${t.id}">Validate →</button>` : ''}</td>
+          </tr>`).join('') || `<tr><td colspan="7"><div class="empty">No transfers logged yet.</div></td></tr>`}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+function renderAdjustments(){
+  const items = state.adjustments;
+  return `
+  <div class="panel">
+    <div class="table-scroll"><table>
+      <thead><tr><th>Reference</th><th>Warehouse</th><th>Reason</th><th>Lines</th><th>Date</th><th>Status</th></tr></thead>
+      <tbody>
+        ${items.map(a=>`
+          <tr>
+            <td class="mono">${a.id}</td><td>${a.warehouse}</td><td>${a.reason}</td>
+            <td>${a.lines.map(l=>`${productById(l.productId).name} (${l.qty>0?'+':''}${l.qty})`).join(', ')}</td>
+            <td class="mono">${a.date}</td><td>${badge(a.status)}</td>
+          </tr>`).join('') || `<tr><td colspan="6"><div class="empty">No adjustments logged yet.</div></td></tr>`}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+function renderLedger(){
+  return `
+  <div class="panel">
+    <div class="table-scroll"><table>
+      <thead><tr><th>Date</th><th>Reference</th><th>Type</th><th>Product</th><th>From</th><th>To</th><th>Qty</th></tr></thead>
+      <tbody>
+        ${state.ledger.map(l=>`
+          <tr>
+            <td class="mono">${l.date}</td><td class="mono">${l.ref}</td><td>${l.type}</td><td>${l.product}</td>
+            <td>${l.from}</td><td>${l.to}</td><td class="${l.qty<0?'qty-neg':'qty-pos'}">${l.qty>0?'+':''}${l.qty}</td>
+          </tr>`).join('') || `<tr><td colspan="7"><div class="empty">No stock movements recorded yet.</div></td></tr>`}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+function renderSettings(){
+  return `
+  <div class="panel" style="max-width:520px;">
+    <div class="panel-head"><div class="panel-title">Warehouses</div></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>Warehouse</th><th>Products Stored</th><th>Total Units</th></tr></thead>
+      <tbody>
+        ${WAREHOUSES.map(w=>{
+          const prods = state.products.filter(p=>(p.stock[w]||0)>0).length;
+          const units = state.products.reduce((sum,p)=>sum+(p.stock[w]||0),0);
+          return `<tr><td>${w}</td><td>${prods}</td><td class="mono">${units}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+
+/* ---------- Filters & validate actions ---------- */
+function bindDynamic(){
+  document.querySelectorAll('[data-status-filter]').forEach(el=>{
+    el.addEventListener('click', ()=>{ activeStatusFilter = el.dataset.statusFilter; render(); });
+  });
+  document.querySelectorAll('[data-cat-filter]').forEach(el=>{
+    el.addEventListener('click', ()=>{ activeWarehouseFilter = el.dataset.catFilter; render(); });
+  });
+  const whFilter = document.getElementById('whFilter');
+  if(whFilter) whFilter.addEventListener('change', ()=>{ activeWarehouseFilter = whFilter.value; render(); });
+
+  document.querySelectorAll('[data-validate]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const [key,id] = el.dataset.validate.split(':');
+      validateDoc(key, id);
+    });
+  });
+}
+
+function validateDoc(key, id){
+  if(key==='receipts'){
+    const doc = state.receipts.find(r=>r.id===id);
+    doc.lines.forEach(l=>{ const p = productById(l.productId); p.stock[doc.warehouse]=(p.stock[doc.warehouse]||0)+l.qty;
+      addLedger('Receipt', doc.id, l.productId, 'Vendor', doc.warehouse, l.qty, doc.date); });
+    doc.status='Done'; toast(`${id} validated — stock increased.`);
+  } else if(key==='deliveries'){
+    const doc = state.deliveries.find(d=>d.id===id);
+    doc.lines.forEach(l=>{ const p = productById(l.productId); p.stock[doc.warehouse]=(p.stock[doc.warehouse]||0)-l.qty;
+      addLedger('Delivery', doc.id, l.productId, doc.warehouse, 'Customer', -l.qty, doc.date); });
+    doc.status='Done'; toast(`${id} validated — stock decreased.`);
+  } else if(key==='transfers'){
+    const doc = state.transfers.find(t=>t.id===id);
+    doc.lines.forEach(l=>{ const p = productById(l.productId);
+      p.stock[doc.from]=(p.stock[doc.from]||0)-l.qty; p.stock[doc.to]=(p.stock[doc.to]||0)+l.qty;
+      addLedger('Internal', doc.id, l.productId, doc.from, doc.to, l.qty, doc.date); });
+    doc.status='Done'; toast(`${id} validated — location updated.`);
+  }
+  save(); render();
+}
+
+/* ---------- Modals ---------- */
+function openModal(type){
+  const modal = document.getElementById('modal');
+  const overlay = document.getElementById('overlay');
+  let html='';
+  const productOpts = state.products.map(p=>`<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+  const whOpts = WAREHOUSES.map(w=>`<option value="${w}">${w}</option>`).join('');
+
+  if(type==='receipt'){
+    html = `
+    <div class="modal-head"><div class="modal-title">New Receipt</div><div class="modal-close" data-close>×</div></div>
+    <div class="modal-body">
+      <div class="field"><label>Supplier</label><input id="f-supplier" placeholder="e.g. Ferro Traders Ltd"></div>
+      <div class="field"><label>Warehouse</label><select id="f-warehouse">${whOpts}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Product</label><select id="f-product">${productOpts}</select></div>
+        <div class="field"><label>Quantity received</label><input id="f-qty" type="number" min="1" value="10"></div>
+      </div>
+      <div class="hint">Stock increases automatically once validated.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn" id="f-submit">Create receipt</button></div>`;
+  } else if(type==='delivery'){
+    html = `
+    <div class="modal-head"><div class="modal-title">New Delivery Order</div><div class="modal-close" data-close>×</div></div>
+    <div class="modal-body">
+      <div class="field"><label>Customer</label><input id="f-customer" placeholder="e.g. Northline Retail"></div>
+      <div class="field"><label>Warehouse</label><select id="f-warehouse">${whOpts}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Product</label><select id="f-product">${productOpts}</select></div>
+        <div class="field"><label>Quantity to pick</label><input id="f-qty" type="number" min="1" value="5"></div>
+      </div>
+      <div class="hint">Stock decreases automatically once validated.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn" id="f-submit">Create delivery</button></div>`;
+  } else if(type==='transfer'){
+    html = `
+    <div class="modal-head"><div class="modal-title">New Internal Transfer</div><div class="modal-close" data-close>×</div></div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field"><label>From</label><select id="f-from">${whOpts}</select></div>
+        <div class="field"><label>To</label><select id="f-to">${whOpts.replace('value="'+WAREHOUSES[0]+'"','value="'+WAREHOUSES[1]+'" selected')}</select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Product</label><select id="f-product">${productOpts}</select></div>
+        <div class="field"><label>Quantity</label><input id="f-qty" type="number" min="1" value="10"></div>
+      </div>
+      <div class="hint">Total stock is unchanged; only location updates.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn" id="f-submit">Create transfer</button></div>`;
+  } else if(type==='adjustment'){
+    html = `
+    <div class="modal-head"><div class="modal-title">New Stock Adjustment</div><div class="modal-close" data-close>×</div></div>
+    <div class="modal-body">
+      <div class="field"><label>Warehouse</label><select id="f-warehouse">${whOpts}</select></div>
+      <div class="field"><label>Product</label><select id="f-product">${productOpts}</select></div>
+      <div class="field-row">
+        <div class="field"><label>Counted quantity</label><input id="f-counted" type="number" min="0" value="0"></div>
+      </div>
+      <div class="field"><label>Reason</label><input id="f-reason" placeholder="e.g. Damaged in storage"></div>
+      <div class="hint">System will calculate the difference from recorded stock and log it.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn" id="f-submit">Apply adjustment</button></div>`;
+  } else if(type==='product'){
+    html = `
+    <div class="modal-head"><div class="modal-title">New Product</div><div class="modal-close" data-close>×</div></div>
+    <div class="modal-body">
+      <div class="field"><label>Name</label><input id="f-name" placeholder="e.g. Aluminium Sheets"></div>
+      <div class="field-row">
+        <div class="field"><label>SKU / Code</label><input id="f-sku" placeholder="e.g. RAW-ALU-009"></div>
+        <div class="field"><label>Unit of measure</label><input id="f-uom" placeholder="kg / unit / box"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Category</label><select id="f-category">${CATEGORIES.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="field"><label>Reorder point</label><input id="f-reorder" type="number" min="0" value="20"></div>
+      </div>
+      <div class="field"><label>Initial stock (Main Warehouse, optional)</label><input id="f-initial" type="number" min="0" value="0"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close>Cancel</button><button class="btn" id="f-submit">Create product</button></div>`;
+  } else if(type==='warehouse'){
+    html = `
+    <div class="modal-head"><div class="modal-title">New Warehouse</div><div class="modal-close" data-close>×</div></div>
+    <div class="modal-body">
+      <div class="hint">This demo ships with a fixed set of warehouses (${WAREHOUSES.join(', ')}). Adding new ones isn't wired up in this build.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close>Close</button></div>`;
+  }
+  modal.innerHTML = html;
+  overlay.classList.add('open');
+  modal.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click', closeModal));
+  const submit = document.getElementById('f-submit');
+  if(submit) submit.addEventListener('click', ()=>submitModal(type));
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('overlay').addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
+
+function submitModal(type){
+  const date = todayStr();
+  if(type==='receipt'){
+    const supplier = document.getElementById('f-supplier').value.trim() || 'Unnamed Supplier';
+    const warehouse = document.getElementById('f-warehouse').value;
+    const productId = document.getElementById('f-product').value;
+    const qty = Math.max(1, parseInt(document.getElementById('f-qty').value)||1);
+    const id = nextId('RC');
+    state.receipts.unshift({id, supplier, warehouse, status:'Waiting', date, lines:[{productId, qty}]});
+    toast(`${id} created for ${supplier}.`);
+  } else if(type==='delivery'){
+    const customer = document.getElementById('f-customer').value.trim() || 'Unnamed Customer';
+    const warehouse = document.getElementById('f-warehouse').value;
+    const productId = document.getElementById('f-product').value;
+    const qty = Math.max(1, parseInt(document.getElementById('f-qty').value)||1);
+    const id = nextId('DL');
+    state.deliveries.unshift({id, customer, warehouse, status:'Waiting', date, lines:[{productId, qty}]});
+    toast(`${id} created for ${customer}.`);
+  } else if(type==='transfer'){
+    const from = document.getElementById('f-from').value;
+    const to = document.getElementById('f-to').value;
+    const productId = document.getElementById('f-product').value;
+    const qty = Math.max(1, parseInt(document.getElementById('f-qty').value)||1);
+    if(from===to){ toast('From and To locations must differ.'); return; }
+    const id = nextId('TR');
+    state.transfers.unshift({id, from, to, status:'Waiting', date, lines:[{productId, qty}]});
+    toast(`${id} created: ${from} → ${to}.`);
+  } else if(type==='adjustment'){
+    const warehouse = document.getElementById('f-warehouse').value;
+    const productId = document.getElementById('f-product').value;
+    const counted = Math.max(0, parseInt(document.getElementById('f-counted').value)||0);
+    const reason = document.getElementById('f-reason').value.trim() || 'Physical count correction';
+    const p = productById(productId);
+    const recorded = p.stock[warehouse]||0;
+    const diff = counted - recorded;
+    const id = nextId('AJ');
+    p.stock[warehouse] = counted;
+    state.adjustments.unshift({id, warehouse, reason, status:'Done', date, lines:[{productId, qty:diff}]});
+    addLedger('Adjustment', id, productId, warehouse, '—', diff, date);
+    toast(`${id} applied: ${diff>0?'+':''}${diff} ${p.uom}.`);
+  } else if(type==='product'){
+    const name = document.getElementById('f-name').value.trim();
+    const sku = document.getElementById('f-sku').value.trim();
+    if(!name || !sku){ toast('Name and SKU are required.'); return; }
+    const uom = document.getElementById('f-uom').value.trim() || 'unit';
+    const category = document.getElementById('f-category').value;
+    const reorder = Math.max(0, parseInt(document.getElementById('f-reorder').value)||0);
+    const initial = Math.max(0, parseInt(document.getElementById('f-initial').value)||0);
+    const stock = {}; WAREHOUSES.forEach(w=>stock[w]=0); stock[WAREHOUSES[0]]=initial;
+    const id = 'p'+(state.products.length+1)+'_'+Date.now().toString(36).slice(-4);
+    state.products.push({id, name, sku, category, uom, reorder, stock});
+    toast(`${name} added to catalog.`);
+  }
+  save(); closeModal(); render();
+}
+
+/* ---------- Init ---------- */
+save();
+render();
+</script>
+</body>
+</html>
